@@ -1,0 +1,54 @@
+name: Validate D-E-I-R repository
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate repository structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check required files
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            "README.md"
+            "protocol/AGENTS.md"
+            "protocol/heartbeat_developer.md"
+            "protocol/heartbeat_auditor.md"
+            "templates/report.md"
+            "templates/review.md"
+            "config/automation-plan.md"
+          )
+          for file in "${files[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              echo "::error file=$file::Required file is missing"
+              exit 1
+            fi
+            echo "OK: $file"
+          done
+
+      - name: Check message template fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in templates/report.md templates/review.md; do
+            for field in id type author reply_to status created_at; do
+              if ! grep -q "^$field:" "$file"; then
+                echo "::error file=$file::Missing front matter field: $field"
+                exit 1
+              fi
+            done
+            echo "OK: message fields in $file"
+          done
